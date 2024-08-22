@@ -4,7 +4,7 @@ import time
 from pydantic import ValidationError
 import snowflake.connector
 import streamlit as st
-from snow_validators import BrandModel,DeviceModel,StocksModel
+from pages.snow_validators import BrandModel,DeviceModel,StocksModel
 from snowflake.snowpark import Session
 from sqlalchemy import create_engine, Column, Integer, String, text
 from sqlalchemy.ext.declarative import declarative_base
