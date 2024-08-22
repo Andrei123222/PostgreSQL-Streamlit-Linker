@@ -133,7 +133,7 @@ class PersonConfValidator(ValidationBaseModel):
     pet_id: int
     name: str
     occupation: str = Field(max_length=40)
-    nickname: str | None = Field(max_length=20)
+    nickname: str | None = Field(default=None,max_length=20)
 
     @field_validator("pet_id")
     @classmethod

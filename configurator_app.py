@@ -3,12 +3,10 @@ import time
 import pandas as pd
 import streamlit as st
 from configurator_validators import PetConfValidator,TypeConfValidator,PersonConfValidator,conn,get_db_session
-from pydantic import ValidationError
-from sqlalchemy import create_engine, Column, Integer, String, text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
 from configurator import get_configurator
 
+# Lookup dicts
 
 columns_lookup = {
     "types" : "type_id,pet_type",
@@ -21,6 +19,8 @@ ignored_fields = {
     "types" : "has_age_range",
     "person" : ""
 }
+
+# Funtions
 
 def safe_sql_identifier(name):
     return "".join(c for c in name if c.isalnum() or c in ['_','(',')'])
@@ -108,11 +108,10 @@ def info_exists(*args):
                 ).fetchone()
             return result[0] > 0
 
-
-
 def format_labels(option):
     return option[1]
 
+#Main Structure
 
 pet_columns = get_table_columns("pet")
 types_columns = get_table_columns("types")
@@ -121,6 +120,8 @@ current_table = []
 
 
 st.warning("New columns will be added, but no validation beyond type will be performed")
+
+# Session State configuration
 
 if 'configurator' not in st.session_state:
     conf = get_configurator()
@@ -328,7 +329,6 @@ with st.container(border=True):
                     st.session_state.insert_pressed = False
             else:
                 if st.session_state.current_table == "pet":
-                    st.write(st.session_state.validated_model["pet_name"])
                     if not info_exists("pet",st.session_state.validated_model["pet_name"],st.session_state.validated_model["type_id"],st.session_state.validated_model["age"],st.session_state.validated_model["owner_address"]):
                         with st.spinner("Petting the lil' guy... taking pictures... saving info..."):
                             time.sleep(5)
@@ -373,10 +373,8 @@ if clicked:
         row.update(sample)
         flat_data.append(row)
 
-    # Step 2: Create a pandas DataFrame
     df = pd.DataFrame(flat_data)
 
-    # Step 3: Save the DataFrame to an Excel file
     output_file_path = 'conf_input.xlsx'
     with pd.ExcelWriter(output_file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
         df.to_excel(writer, index=False)

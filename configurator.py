@@ -1,5 +1,28 @@
 import pandas as pd
 import openpyxl
+def get_configurator():
+    input_file_path = 'conf_input.xlsx'
+    df = pd.read_excel(input_file_path)
+
+    conf = {}
+
+    for _, row in df.iterrows():
+        col_name = row['column_name']
+        del row['column_name']
+        conf[col_name] = {
+            "flag_modify": row["flag_modify"],
+            "used_for_validation": row["used_for_validation"],
+            "used_for_db_input": row["used_for_db_input"],
+            "src_table_name": row["src_table_name"],
+            "sample": {}
+        }
+    
+        for key, value in row.items():
+            if pd.notna(value) and key not in conf[col_name]:
+                conf[col_name]["sample"][key] = value
+
+    return conf
+
 conf = {
     "col1_pet" : {
         "flag_modify" : True,
@@ -208,34 +231,9 @@ for col, details in conf.items():
     row.update(sample)
     flat_data.append(row)
 
-# Step 2: Create a pandas DataFrame
 df = pd.DataFrame(flat_data)
 
-# Step 3: Save the DataFrame to an Excel file
 output_file_path = 'conf_output.xlsx'
 df.to_excel(output_file_path, index=False)
 
 print("Data has been written to", output_file_path)
-
-def get_configurator():
-    input_file_path = 'conf_input.xlsx'
-    df = pd.read_excel(input_file_path)
-
-    conf = {}
-
-    for _, row in df.iterrows():
-        col_name = row['column_name']
-        del row['column_name']
-        conf[col_name] = {
-            "flag_modify": row["flag_modify"],
-            "used_for_validation": row["used_for_validation"],
-            "used_for_db_input": row["used_for_db_input"],
-            "src_table_name": row["src_table_name"],
-            "sample": {}
-        }
-    
-        for key, value in row.items():
-            if pd.notna(value) and key not in conf[col_name]:
-                conf[col_name]["sample"][key] = value
-
-    return conf
