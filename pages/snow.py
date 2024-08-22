@@ -4,26 +4,18 @@ import time
 from pydantic import ValidationError
 import snowflake.connector
 import streamlit as st
-from pages.snow_validators import BrandModel,DeviceModel,StocksModel
+from snow_validators import BrandModel,DeviceModel,StocksModel
 from snowflake.snowpark import Session
 from sqlalchemy import create_engine, Column, Integer, String, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# conn = snowflake.connector.connect(
-#     user = "ANDREI123222",
-#     password = "Deidei1234",
-#     database = "TEST_STREAMLIT",
-#     account = "pxxqyjp-edb57287",
-#     schema = "TEST_SCHEMA"
-# )
-
 connection_parameters = {
-    "user" : "ANDREI123222",
-    "password" : "Deidei1234",
-    "database" : "TEST_STREAMLIT",
-    "account" : "pxxqyjp-edb57287",
-    "schema" : "TEST_SCHEMA"
+    "user" : st.secrets.snowflake.user,
+    "password" : st.secrets.snowflake.password,
+    "database" : st.secrets.snowflake.database,
+    "account" : st.secrets.snowflake.account,
+    "schema" : st.secrets.snowflake.schema
 }
 
 
