@@ -4,7 +4,7 @@ import time
 from pydantic import ValidationError
 import snowflake.connector
 import streamlit as st
-from pages.snow_validators import BrandModel,DeviceModel,StocksModel
+from snow_validators import BrandModel,DeviceModel,StocksModel
 from snowflake.snowpark import Session
 from sqlalchemy import create_engine, Column, Integer, String, text
 from sqlalchemy.ext.declarative import declarative_base
@@ -17,20 +17,6 @@ connection_parameters = {
     "account" : st.secrets.snowflake.account,
     "schema" : st.secrets.snowflake.schema
 }
-
-
-
-def createSession():
-    if 'snowflake_conn' not in st.session_state:
-        conn = snowflake.connector.connect(
-            user=connection_parameters["user"],
-            password=connection_parameters["password"],
-            account=connection_parameters["account"],
-            database=connection_parameters["database"],
-            schema=connection_parameters["schema"]
-        )
-        st.session_state['snowflake_conn'] = conn
-    return st.session_state['snowflake_conn']
 
 def get_db_session():
     if 'snowflake_conn' not in st.session_state:
@@ -45,7 +31,7 @@ def get_db_session():
     return st.session_state['snowflake_conn']
 
 
-def loadData(tableName: str):
+def load_data(tableName: str):
     conn = get_db_session()
     if conn:
         with conn.cursor() as cursor:
@@ -91,7 +77,7 @@ def loadData(tableName: str):
         st.error("Failed to establish a Snowflake session.")
         return None
     
-def insertData(*args):
+def insert_data(*args):
     if type(args[0]) is not str:
         raise TypeError("First argument should be a string")
     conn = get_db_session()
@@ -152,7 +138,7 @@ def insertData(*args):
             cursor.close()
         conn.commit()
 
-def updateData(*args):
+def update_data(*args):
     if type(args[0]) is not str:
         raise TypeError("Table name should be a string(and either brand,device or stocks)")
     conn = get_db_session()
@@ -206,7 +192,7 @@ def updateData(*args):
             cursor.close()
         conn.commit()
             
-def deleteData(tablename: str, data):
+def delete_data(tablename: str, data):
     conn = get_db_session()
     with conn.cursor() as cursor:
         try:
@@ -229,7 +215,7 @@ def deleteData(tablename: str, data):
             cursor.close()
         conn.commit()
 
-def dataExists(tableName: str,data: str):
+def data_exists(tableName: str,data: str):
     conn = get_db_session()
     with conn.cursor() as cursor:
         try:
@@ -244,18 +230,18 @@ def dataExists(tableName: str,data: str):
 
         return result[0]>0
 
-def getValueID(info_table: dict, value: str):
+def get_value_id(info_table: dict, value: str):
     for key,value in info_table.items():
             if value == value:
                 return key  
 
-def formatLabels(option):
+def format_labels(option):
     return option[1]
 
 
 tab_brand, tab_device, tab_stocks = st.tabs(["Brand", "Device", "Stocks"])
 
-brands_table = loadData("brand")
+brands_table = load_data("brand")
 
 with tab_brand:
     selected_option = st.selectbox(
@@ -282,8 +268,8 @@ with tab_brand:
             submitted = st.form_submit_button("Submit")
             if submitted:
                 if not brand_name == "" and not brand_country == "":
-                    if not dataExists("brand",brand_name):
-                        if insertData("brand",brand_name,brand_country,brand_date) != 0:
+                    if not data_exists("brand",brand_name):
+                        if insert_data("brand",brand_name,brand_country,brand_date) != 0:
                             with st.spinner("Browsing the web...researching country...checking company's history..."):
                                 time.sleep(3)
                             st.balloons()
@@ -298,7 +284,7 @@ with tab_brand:
             "Select a brand to modify",
             placeholder="This feels illegal...",
             options=brands_table["name"].items(),
-            format_func=formatLabels,
+            format_func=format_labels,
         )
 
         with st.form("modify_brand_form"):
@@ -321,7 +307,7 @@ with tab_brand:
 
             submitted = st.form_submit_button("Submit changes")
             if submitted:
-                if updateData("brand",new_name,new_country,new_date,brand[1]):
+                if update_data("brand",new_name,new_country,new_date,brand[1]):
                     st.success("Your brand has been updated succesfully")
 
     elif selected_option == "Delete brand(bankruptcy, huh?)":
@@ -335,15 +321,15 @@ with tab_brand:
             submitted = st.button("Bankrupt...")
 
             if submitted:
-                deleteData("brand",bankrupted_brand)
+                delete_data("brand",bankrupted_brand)
                 st.success("Brand has been deleted...so many years of work..")
 
     with st.expander("show table"):
-        data_to_show = loadData("brand")
+        data_to_show = load_data("brand")
         del data_to_show["brand_id"]
         st.table(data_to_show)
 
-devices_table = loadData("device")
+devices_table = load_data("device")
 
 with tab_device:
     selected_option = st.selectbox("Select an operation for the device table",["Add device","Modify device(it feels late for that but oh well)","Delete device(this'll be expensive)"])
@@ -352,7 +338,7 @@ with tab_device:
         device_brand = st.selectbox(
             "Select the brand to which this product is tied",
             options=brands_table["name"].items(),
-            format_func=formatLabels
+            format_func=format_labels
         )
 
         with st.form("add_device_form"):
@@ -377,20 +363,20 @@ with tab_device:
 
             submitted = st.form_submit_button("Add")
             if submitted:
-                if not dataExists("device",device_name):
-                    if insertData("device", brands_table["brand_id"][device_brand[0]],device_type,device_name,device_launch,device_price):
+                if not data_exists("device",device_name):
+                    if insert_data("device", brands_table["brand_id"][device_brand[0]],device_type,device_name,device_launch,device_price):
                         with st.spinner("Updating databases... making advertisements... finding sponsors..."):
                                 time.sleep(3)
                         st.balloons()
                         st.success("Device inserted succesfully")
-                elif dataExists("device",device_name):
+                elif data_exists("device",device_name):
                     st.error("A device with that name already exists. Don't shoot the messenger, just think of a better name")
 
     elif selected_option == "Modify device(it feels late for that but oh well)":
         selected_device = st.selectbox(
             "Select a device to modify",
             options=devices_table["name"].items(),
-            format_func=formatLabels
+            format_func=format_labels
         )
 
         st.write("You are unable to change the brand, as this device is already property of the brand that created it(laws and stuff)")
@@ -422,8 +408,8 @@ with tab_device:
 
             submitted = st.form_submit_button("Confirm changes")
             if submitted:
-                if not dataExists("device",new_name):
-                    if updateData("device",new_type,new_name,new_launch,new_price,selected_device[1]):
+                if not data_exists("device",new_name):
+                    if update_data("device",new_type,new_name,new_launch,new_price,selected_device[1]):
                         st.success("Your device has been updated succesfully(under legal terms, of course)")
                 else:
                     st.error("Your inspiration was mismatched, as that name already exists")
@@ -437,16 +423,16 @@ with tab_device:
 
             submitted = st.button("Delete")
             if submitted:
-                deleteData("device",device_to_delete)
+                delete_data("device",device_to_delete)
                 st.success("The device has been deleted succesfully")
                 
     with st.expander("show table"):
-        data_to_show = loadData("device")
+        data_to_show = load_data("device")
         del data_to_show["device_id"]
         st.table(data_to_show)
 
 with tab_stocks:
-    stocks_table = loadData("stocks")
+    stocks_table = load_data("stocks")
     selected_option = st.selectbox(
             "Select an operation to perform on the stocks",
             options=["Add stock","Modify stock","Delete stock"]
@@ -456,7 +442,7 @@ with tab_stocks:
         selected_device = st.selectbox(
             "Select the device",
             options=devices_table["name"].items(),
-            format_func=formatLabels
+            format_func=format_labels
             )
         
         with st.form("add_stock_form"):
@@ -467,8 +453,8 @@ with tab_stocks:
 
             submitted = st.form_submit_button("Confirm")
             if submitted:
-                if not dataExists("stocks",str(devices_table["device_id"][selected_device[0]])):
-                    if insertData("stocks",selected_device[1],supply_date,quantity):
+                if not data_exists("stocks",str(devices_table["device_id"][selected_device[0]])):
+                    if insert_data("stocks",selected_device[1],supply_date,quantity):
                         with st.spinner("Dusting off warehouses... packaging graciously... employing mice-catchers(cats)..."):
                                 time.sleep(3)
                         st.balloons()
@@ -480,10 +466,10 @@ with tab_stocks:
         selected_device = st.selectbox(
             "Select a device's stock to update",
             options=stocks_table["device"].items(),
-            format_func=formatLabels
+            format_func=format_labels
             )
 
-        device_id: int = getValueID(devices_table["name"],selected_device[1])                                                                                                                         
+        device_id: int = get_value_id(devices_table["name"],selected_device[1])                                                                                                                         
                                                                                                                                                 
         with st.form("modify_stock_form"):
 
@@ -493,7 +479,7 @@ with tab_stocks:
 
             submitted = st.form_submit_button("Submit changes")
             if submitted:
-                if updateData("stocks",selected_device[1],new_supply_date,new_quantity,devices_table["device_price"][device_id],devices_table["device_id"][device_id]):
+                if update_data("stocks",selected_device[1],new_supply_date,new_quantity,devices_table["device_price"][device_id],devices_table["device_id"][device_id]):
                     st.success("Stock was updated succesfully")
 
     elif selected_option == "Delete stock":
@@ -505,15 +491,15 @@ with tab_stocks:
 
             st.write(selected_device)
 
-            device_id = getValueID(devices_table["name"],selected_device)
+            device_id = get_value_id(devices_table["name"],selected_device)
 
             submitted = st.button("Delete")
             if submitted: 
-                deleteData("stocks",devices_table["device_id"][device_id])
+                delete_data("stocks",devices_table["device_id"][device_id])
                 st.success("Deleted succesfully!(hope it was a good sell, if it was one)")
 
         
     with st.expander("show table"):
-        data_to_show = loadData("stocks")
+        data_to_show = load_data("stocks")
         del data_to_show["stock_id"]
         st.table(data_to_show)

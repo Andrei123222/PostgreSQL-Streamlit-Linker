@@ -4,7 +4,7 @@ import time
 from pydantic import ValidationError
 import streamlit as st
 from app_validators import TypeModel,PetModel,PersonModel
-from sqlalchemy import create_engine, Column, Integer, String, text
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -32,7 +32,7 @@ def get_db_session():
 
 # General Functions
 
-def queryTable(tableName: str):
+def query_table(tableName: str):
     if tableName == "types":
         return conn.query('SELECT type_id,pet_type,weight_range,height_range FROM types;', ttl="0m")
     elif tableName == "pet":
@@ -40,7 +40,7 @@ def queryTable(tableName: str):
     elif tableName == "person":
         return conn.query('SELECT person_id,p.pet_name,name,occupation,nickname FROM person INNER JOIN pet p on p.pet_id = person.pet_id', ttl="0m")
     
-def queryTableWithoutId(tableName: str):
+def query_table_without_id(tableName: str):
     if tableName == "types":
         return conn.query('SELECT pet_type,weight_range,height_range FROM types;', ttl="0m")
     elif tableName == "pet":
@@ -48,12 +48,12 @@ def queryTableWithoutId(tableName: str):
     elif tableName == "person":
         return conn.query('SELECT name,p.pet_name,occupation,nickname FROM person INNER JOIN pet p on p.pet_id = person.pet_id', ttl="0m")
 
-def getId(infoTable: dict, selectedItem: str):
+def get_id(infoTable: dict, selectedItem: str):
     for key,value in infoTable.items():
         if value == selectedItem:
             return key
 
-def updateItem(*args):
+def update_item(*args):
     if type(args[0]) is not str:
         raise TypeError("First argument must be a string(table's name)")
     with next(get_db_session()) as s:
@@ -111,7 +111,7 @@ def updateItem(*args):
         finally:
             s.commit()
 
-def insertInfo(*args):
+def insert_info(*args):
     if type(args[0]) is not str:
         raise TypeError(f"First argument must be a string, given type is {type(args[0])}")
     with next(get_db_session()) as s:
@@ -163,7 +163,7 @@ def insertInfo(*args):
         finally:
             s.commit() 
 
-def deleteItem(tableName: str,selectedItem,currentDict: dict):
+def delete_item(tableName: str,selectedItem,currentDict: dict):
     with next(get_db_session()) as s:
         try:
             if tableName == "types":
@@ -171,21 +171,21 @@ def deleteItem(tableName: str,selectedItem,currentDict: dict):
                     text('DELETE FROM types WHERE pet_type = :type'),
                     {"type" : selectedItem}
                 )
-                currentDict = queryTable("types").to_dict()
+                currentDict = query_table("types").to_dict()
 
             elif tableName == "pet":
                 s.execute(
                     text('DELETE FROM pet WHERE pet_id = :pet'),
                     {"pet" : selectedItem}
                 )
-                currentDict = queryTable("pet").to_dict()
+                currentDict = query_table("pet").to_dict()
 
             elif tableName == "person":
                 s.execute(
                     text('DELETE FROM person WHERE person_id = :person'),
                     {"person" : selectedItem}
                 )
-                currentDict = queryTable("person").to_dict()
+                currentDict = query_table("person").to_dict()
             else:
                 raise TypeError(f"Given string is not a tablename: {tableName}")
         finally:
@@ -193,7 +193,7 @@ def deleteItem(tableName: str,selectedItem,currentDict: dict):
 
 # Type Functions
 
-def getRange(selectedIndex: int,info_table: dict,selectedRange: str) -> tuple[int,int]:
+def get_range(selectedIndex: int,info_table: dict,selectedRange: str) -> tuple[int,int]:
     weight_range_str = info_table[selectedRange][selected_index]
     return tuple(map(int, weight_range_str.split('-')))
 
@@ -206,19 +206,18 @@ def type_exists(pet: str):
 
 # Pet Functions
 
-def formatLabels(option):
+def format_labels(option):
     return option[1]
 
 # App structure
 
-types_table = queryTable("types").to_dict()
-pets_table = queryTable("pet").to_dict()
+types_table = query_table("types").to_dict()
+pets_table = query_table("pet").to_dict()
 
 tab_person, tab_pet, tab_types, tab_shuffle = st.tabs([
     ":man-woman-boy: Person :man-girl-girl:",
     ":dog: Pet :cat:",
-    ":rabbit::raccoon: Type(we don't judge) :frog::tiger:",
-    ":arrow_right_hook: Shuffle :leftwards_arrow_with_hook:"])
+    ":rabbit::raccoon: Type(we don't judge) :frog::tiger:"])
 
 
 with tab_person:
@@ -227,7 +226,7 @@ with tab_person:
         "Select an operation:",
         ("Add person", "Modify person", "Delete person" )
     )
-    persons_table = queryTable("person").to_dict()
+    persons_table = query_table("person").to_dict()
 
     if CRUD_option == "Add person":
         with st.form("add_person_form"):    
@@ -237,7 +236,7 @@ with tab_person:
                 "Select your lil' friend",
                 placeholder="What's his name?",
                 options=list(pets_table["pet_name"].items()),
-                format_func=formatLabels
+                format_func=format_labels
             )
             col1, _, col2  = st.columns([1, 0.58, 1])
 
@@ -249,18 +248,18 @@ with tab_person:
 
             submitted = st.form_submit_button("Add Person")
             if submitted:
-                insertInfo("person",pets_table["pet_id"][pet_info[0]],person_name,person_occupation,person_nickname)
+                insert_info("person",pets_table["pet_id"][pet_info[0]],person_name,person_occupation,person_nickname)
                 with st.spinner('Browsing social media... searching for occupation... admiring nickname...'):
                     time.sleep(5)
                 st.success('Person added!')
                 st.balloons()
-                persons_table = queryTable("person").to_dict()
+                persons_table = query_table("person").to_dict()
 
     elif CRUD_option == "Modify person":
         selected_person = st.selectbox(
             "Select a person to modify(how'd u get it wrong the first time?)",
             options=list(persons_table["name"].items()),
-            format_func=formatLabels
+            format_func=format_labels
         )
 
 
@@ -283,8 +282,8 @@ with tab_person:
                     "Select your ACTUAl pet",
                     placeholder="How'd you get it wrong the first time...",
                     options=list(pets_table["pet_name"].items()),
-                    index = getId(pets_table["pet_name"],persons_table["pet_name"][selected_person[0]]),
-                    format_func=formatLabels
+                    index = get_id(pets_table["pet_name"],persons_table["pet_name"][selected_person[0]]),
+                    format_func=format_labels
                 )
 
             with col3.expander("Modify occupation"):
@@ -300,9 +299,9 @@ with tab_person:
                 )
             submitted = col5.form_submit_button("Submit changes")
             if submitted:
-                updateItem("person",pets_table["pet_id"][new_pet[0]],new_name,new_occupation,new_nickname,persons_table["person_id"][selected_person[0]])
+                update_item("person",pets_table["pet_id"][new_pet[0]],new_name,new_occupation,new_nickname,persons_table["person_id"][selected_person[0]])
                 st.success("The person's information has been updated succesfully")
-                persons_table = queryTable("person").to_dict()
+                persons_table = query_table("person").to_dict()
 
     elif CRUD_option == "Delete person":    
          with st.form("delete_person_form"):
@@ -310,17 +309,17 @@ with tab_person:
                 "Select the person you want to delete(what'd they do to you?)",
                 options=list(persons_table["name"].items()),
                 placeholder="Choose the poor soul",
-                format_func=formatLabels,
+                format_func=format_labels,
                 index = None
             )
 
             submitted = st.form_submit_button("Been good knowing them")
             if submitted and selected_person != None:
-                deleteItem("person",persons_table["person_id"][selected_person[0]],persons_table)
+                delete_item("person",persons_table["person_id"][selected_person[0]],persons_table)
                 st.success("Person has been deleted succesfully(it's been good knowing them)")
     
     with st.expander("Show persons"):
-        st.table(queryTableWithoutId("person"))
+        st.table(query_table_without_id("person"))
     
 
 
@@ -341,7 +340,7 @@ with tab_pet:
         with st.form("add_pet_form"):
             pet_name = st.text_input("Input pet's name", max_chars = 15,placeholder="What's your good friend going to be called?")
 
-            type_Id = getId(types_table["pet_type"],type_select)
+            type_Id = get_id(types_table["pet_type"],type_select)
 
             age_value = st.number_input(
                 "Select your pet's age",
@@ -350,19 +349,19 @@ with tab_pet:
             
             submitted = st.form_submit_button("Submit")
             if submitted:
-                insertInfo("pet",pet_name,types_table["type_id"][type_Id],age_value)
+                insert_info("pet",pet_name,types_table["type_id"][type_Id],age_value)
                 with st.spinner('Noting down name... analyzing age... seeking species...'):
                     time.sleep(5)
                 st.success('Pet added!')
                 st.balloons()
-                pets_table = queryTable("pet").to_dict()
+                pets_table = query_table("pet").to_dict()
     
     elif CRUD_option == "Modify pet(what's wrong with him?)":
         selected_pet = st.selectbox(
             "Select the pet you want to modify",
             options=list(pets_table["pet_name"].items()),
             placeholder="Choose a friend!",
-            format_func=formatLabels
+            format_func=format_labels
         )
 
         st.write("Sadly you cannot edit your pet's type, altough there's no way you could mismatch that...right?")
@@ -381,9 +380,9 @@ with tab_pet:
 
             submitted = st.form_submit_button("Submit")
             if submitted:
-                updateItem("pet",pet_name,pet_age,int(pets_table["pet_id"][selected_pet[0]]))
+                update_item("pet",pet_name,pet_age,int(pets_table["pet_id"][selected_pet[0]]))
                 st.success("Pet information has been updated(and correct now, hopefully)")
-                pets_table = queryTable("pet").to_dict()
+                pets_table = query_table("pet").to_dict()
 
     elif CRUD_option == "Delete pet(why?)":
         with st.form("delete_pet_form"):
@@ -391,16 +390,16 @@ with tab_pet:
                 "Select the pet you want to delete(sad)",
                 options=list(pets_table["pet_name"].items()),
                 placeholder="Choose a friend!",
-                format_func=formatLabels
+                format_func=format_labels
             )
 
             submitted = st.form_submit_button("Farewell, friend")
             if submitted:
-                deleteItem("pet",pets_table["pet_id"][selected_pet[0]],pets_table)
+                delete_item("pet",pets_table["pet_id"][selected_pet[0]],pets_table)
                 st.success("Pet has left this mortal plane...(the database, we mean, he's still alive...right?)")
 
     with st.expander("Show pets"):
-        st.table(queryTableWithoutId("pet"))
+        st.table(query_table_without_id("pet"))
             
 
 with tab_types:
@@ -426,7 +425,7 @@ with tab_types:
             submitted = st.form_submit_button("Submit")
             if submitted:
                 if not type_exists(type_box):
-                    insertInfo("type",type_box,weight_values,height_values)
+                    insert_info("type",type_box,weight_values,height_values)
                     with st.spinner('Writing down... analyzing... seeking cute pics...'):
                         time.sleep(5)
                     st.success('Done!')
@@ -442,22 +441,22 @@ with tab_types:
         with st.form("modify_type_form"):
             new_type = st.text_input("Change the animal's type",selected_type)
 
-            selected_index = getId(types_table["pet_type"],selected_type)
+            selected_index = get_id(types_table["pet_type"],selected_type)
 
             new_weight = st.slider(
                 "Edit the animal's weight range(kg, obviously)",
-                0, 100, (getRange(selected_index,types_table,"weight_range"))
+                0, 100, (get_range(selected_index,types_table,"weight_range"))
             )
             new_height = st.slider(
                 "Edit the animal's height range(cm, as you would expect)",
-                0, 300, (getRange(selected_index,types_table,"height_range"))
+                0, 300, (get_range(selected_index,types_table,"height_range"))
             )
 
             submitted = st.form_submit_button("Submit")
             if submitted:
-                updateItem("types",new_type,new_weight,new_height,selected_type)
+                update_item("types",new_type,new_weight,new_height,selected_type)
                 st.success("Type has been modified(hooray... you got some information wrong the first time...)")
-                types_table = queryTable("types").to_dict()
+                types_table = query_table("types").to_dict()
 
     elif CRUD_option == "Delete type...why would you?:[":
         with st.form("delete_type_form"):
@@ -465,31 +464,8 @@ with tab_types:
 
             submitted = st.form_submit_button("Delete(why?)")
             if submitted:
-                deleteItem("types",selected_type,types_table)
+                delete_item("types",selected_type,types_table)
                 st.success("That type of pet has been deleted(we will miss him)")
     
     with st.expander("Show types"):
-        st.table(queryTableWithoutId("types"))
-
-with tab_shuffle:
-
-    options = ["Mirea Robert","Constantin Voicu","Lefter Andrei"]
-
-    clicked = st.button("Shuffle")
-
-    if clicked:
-        selected = random.randint(0,2)
-        wheel = st.empty()
-        wheel.image("radio-fm4-fm4.gif")
-        with st.spinner("Spinning the wheel..."):
-            time.sleep(2)
-        with st.spinner("Still going..."):
-            time.sleep(1)
-        with st.spinner("Almost done..."):
-            time.sleep(1)
-        with st.spinner("Almost..."):
-            time.sleep(1)
-        wheel.empty()
-        st.success("Done!")
-        time.sleep(1)
-        st.write("Demo will be presented by: " + options[selected])
+        st.table(query_table_without_id("types"))
